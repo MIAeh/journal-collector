@@ -108,7 +108,7 @@ export async function saveItem(input: SaveItemInput): Promise<CollectionItem> {
   }
 
   const response = await notion.pages.create({
-    parent: { type: "data_source_id", data_source_id: DATABASE_ID },
+    parent: { database_id: DATABASE_ID },
     properties,
   });
 
@@ -124,7 +124,7 @@ export async function listItems(options: {
   search?: string;
   pageSize?: number;
 } = {}): Promise<PaginatedResponse<CollectionItem>> {
-  const { cursor, tag, search, pageSize = 100 } = options;
+  const { cursor, tag, search, pageSize = 20 } = options;
 
   const filter: any = { and: [] };
 
@@ -157,7 +157,7 @@ export async function listItems(options: {
   }
 
   const queryOptions: any = {
-    data_source_id: DATABASE_ID,
+    database_id: DATABASE_ID,
     page_size: pageSize,
     sorts: [
       {
@@ -175,7 +175,7 @@ export async function listItems(options: {
     queryOptions.start_cursor = cursor;
   }
 
-  const response = await notion.dataSources.query(queryOptions);
+  const response = await notion.databases.query(queryOptions);
 
   return {
     items: response.results.map(pageToItem),
@@ -308,8 +308,8 @@ export async function listTags(): Promise<TagWithCount[]> {
 
       // Paginate through all results to get accurate count
       while (hasMore) {
-        const response = await notion.dataSources.query({
-          data_source_id: DATABASE_ID,
+        const response = await notion.databases.query({
+          database_id: DATABASE_ID,
           filter: {
             property: "Tags",
             multi_select: {
