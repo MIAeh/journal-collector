@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Collector
 
-## Getting Started
+Personal content collector PWA backed by Notion.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Save links with auto-fetched thumbnails and titles
+- Tag and comment on saved items
+- Search and filter your collection
+- Chrome extension for one-click save
+- iOS Shortcut for mobile capture
+- Installable as PWA on iPhone
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quick Start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Set up Notion database (see `docs/notion-setup.md`)
+2. Clone and install:
+   ```bash
+   npm install
+   cp .env.local.example .env.local
+   # Fill in your Notion API key, database ID, and auth token
+   npm run dev
+   ```
+3. Open http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+Push to GitHub and import on [Vercel](https://vercel.com). Add env vars and deploy.
 
-To learn more about Next.js, take a look at the following resources:
+## Capture Methods
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Chrome Extension**: Load `extension/` folder in chrome://extensions (developer mode)
+- **iOS Shortcut**: Follow guide in `docs/ios-shortcut-setup.md`
+- **In-App**: Use the "+ Add" button
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech Stack
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js · TypeScript · Tailwind CSS · Notion API · Vercel
