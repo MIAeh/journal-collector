@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Collector",
+  "version": "1.0.0",
+  "description": "Save content to your personal collection",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon-48.png"
+  }
+}
