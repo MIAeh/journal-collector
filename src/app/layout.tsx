@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import NavBar from "@/components/NavBar";
+import BottomTabs from "@/components/BottomTabs";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -36,7 +38,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="bg-gray-50 min-h-screen antialiased">{children}</body>
+      <body className="bg-gray-50 min-h-screen antialiased">
+        <NavBar />
+        <main className="pb-20 md:pb-8">{children}</main>
+        <BottomTabs />
+      </body>
     </html>
   );
 }
