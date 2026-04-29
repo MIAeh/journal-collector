@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import ImageWithProxy from "@/components/ImageWithProxy";
 import type { CollectionItem, TagWithCount } from "@/lib/types";
+import { clearCollectionCache } from "@/lib/cache";
 
 export default function ItemDetailPage() {
   const router = useRouter();
@@ -15,7 +16,8 @@ export default function ItemDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   // Tag editing state
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -68,12 +70,39 @@ export default function ItemDetailPage() {
     patchTags([...item.tags, tag]);
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const r = await fetch(`/api/items/${id}/sync`, { method: "POST" });
+      if (!r.ok) { setSyncMsg("Sync failed"); return; }
+      const { item: updated, synced, reason } = await r.json();
+      if (synced) {
+        setItem(updated);
+        clearCollectionCache();
+        setSyncMsg("Synced");
+      } else {
+        setSyncMsg(
+          reason === "unreachable" ? "URL unreachable — kept current" :
+          reason === "gone"        ? "URL gone (404) — kept current" :
+                                     "No new content found"
+        );
+      }
+    } catch {
+      setSyncMsg("Sync failed");
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMsg(null), 3000);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this item?")) return;
     setDeleting(true);
     try {
       const response = await fetch(`/api/items/${id}`, { method: "DELETE" });
       if (response.ok) {
+        clearCollectionCache();
         router.push("/");
       } else {
         alert("Failed to delete item");
@@ -122,39 +151,51 @@ export default function ItemDetailPage() {
           </svg>
           Back
         </button>
-        <Link
-          href={`/items/${id}/edit`}
-          className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-        >
-          ✎ Edit
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="text-gray-500 hover:text-gray-900 disabled:opacity-40 transition-colors"
+            aria-label="Sync from source"
+            title="Sync from source"
+          >
+            <svg
+              className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <Link
+            href={`/items/${id}/edit`}
+            className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+          >
+            ✎ Edit
+          </Link>
+        </div>
       </div>
 
-      {/* Image gallery */}
-      {item.images.length > 0 && (
-        <div className="mb-6">
-          <div className="rounded-xl overflow-hidden aspect-[3/4] bg-gray-100">
-            <ImageWithProxy
-              pageId={item.id}
-              directUrl={item.images[activeImageIndex] ?? null}
-              alt={item.title}
-              className="w-full h-full object-cover"
-            />
+      {syncMsg && (
+        <p className="text-sm text-gray-500 mb-4">{syncMsg}</p>
+      )}
+
+      {/* Image gallery — horizontal scroll */}      {item.images.length > 0 && (
+        <div className="mb-6 -mx-4">
+          <div className="flex gap-2 overflow-x-auto px-4 pb-2 snap-x snap-mandatory">
+            {item.images.map((imgUrl, i) => (
+              <ImageWithProxy
+                key={i}
+                pageId={item.id}
+                directUrl={imgUrl}
+                alt={`${item.title} ${i + 1}`}
+                className="flex-none w-64 aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 snap-start object-cover"
+                hideOnError
+              />
+            ))}
           </div>
-          {item.images.length > 1 && (
-            <div className="flex justify-center gap-2 mt-2">
-              {item.images.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImageIndex(i)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    i === activeImageIndex ? "bg-gray-900" : "bg-gray-300"
-                  }`}
-                  aria-label={`Image ${i + 1}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -174,13 +215,13 @@ export default function ItemDetailPage() {
         {item.tags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full"
+            className="inline-flex items-center gap-1 bg-gray-100 text-gray-900 text-sm px-3 py-1.5 rounded-full"
           >
             #{tag}
             <button
               onClick={() => removeTag(tag)}
               disabled={savingTags}
-              className="text-gray-400 hover:text-gray-700 disabled:opacity-50 leading-none"
+              className="text-gray-500 hover:text-gray-900 disabled:opacity-50 leading-none w-5 h-5 flex items-center justify-center"
               aria-label={`Remove tag ${tag}`}
             >
               ×
@@ -192,7 +233,7 @@ export default function ItemDetailPage() {
             <button
               onClick={() => setTagDropdownOpen((o) => !o)}
               disabled={savingTags}
-              className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 border border-gray-300 px-2 py-0.5 rounded-full disabled:opacity-50"
+              className="inline-flex items-center gap-1 text-sm text-gray-900 border border-gray-300 px-3 py-1.5 rounded-full disabled:opacity-50"
             >
               + Add tag
             </button>
@@ -202,7 +243,7 @@ export default function ItemDetailPage() {
                   <button
                     key={tag}
                     onClick={() => addTag(tag)}
-                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
+                    className="w-full text-left px-3 py-3 text-sm text-gray-900 hover:bg-gray-50"
                   >
                     #{tag}
                   </button>

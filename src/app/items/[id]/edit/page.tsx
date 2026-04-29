@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import ImageWithProxy from "@/components/ImageWithProxy";
 import type { CollectionItem } from "@/lib/types";
+import { clearCollectionCache } from "@/lib/cache";
 
 export default function EditItemPage() {
   const router = useRouter();
@@ -66,6 +67,7 @@ export default function EditItemPage() {
         body: JSON.stringify({ title: title.trim(), comment: comment.trim(), images }),
       });
       if (r.ok) {
+        clearCollectionCache();
         router.push(`/items/${id}`);
       } else {
         const data = await r.json().catch(() => ({}));

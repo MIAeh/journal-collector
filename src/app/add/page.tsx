@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { clearCollectionCache } from "@/lib/cache";
 
 type Mode = "structured" | "quick";
 
@@ -29,7 +30,10 @@ export default function AddPage() {
   const save = async (payload: object) => {
     const response = await fetch("/api/save", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.NEXT_PUBLIC_SAVE_API_KEY ?? "",
+      },
       body: JSON.stringify(payload),
     });
     if (!response.ok) {
@@ -48,6 +52,7 @@ export default function AddPage() {
         tags: tags.split(",").map((t) => t.trim()).filter((t) => t.length > 0),
         comment: comment.trim() || undefined,
       });
+      clearCollectionCache();
       router.push("/");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to save item");
@@ -67,6 +72,7 @@ export default function AddPage() {
     setSaving(true);
     try {
       await save({ url: extracted });
+      clearCollectionCache();
       router.push("/");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to save item");
@@ -81,7 +87,7 @@ export default function AddPage() {
 
       {/* Mode toggle */}
       <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-6">
-        {(["structured", "quick"] as Mode[]).map((m) => (
+        {(["quick", "structured"] as Mode[]).map((m) => (
           <button
             key={m}
             type="button"
@@ -92,7 +98,7 @@ export default function AddPage() {
                 : "bg-white text-gray-600 hover:bg-gray-50"
             }`}
           >
-            {m === "structured" ? "Structured" : "Quick"}
+            {m === "quick" ? "Quick" : "Structured"}
           </button>
         ))}
       </div>
@@ -108,7 +114,7 @@ export default function AddPage() {
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900"
+              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 text-gray-900"
               placeholder="https://example.com"
               required
             />
@@ -123,7 +129,7 @@ export default function AddPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900"
+              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 text-gray-900"
               placeholder="Auto-fetched if empty"
             />
           </div>
@@ -137,7 +143,7 @@ export default function AddPage() {
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900"
+              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 text-gray-900"
               placeholder="tag1, tag2, tag3"
             />
           </div>
@@ -150,7 +156,7 @@ export default function AddPage() {
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 min-h-[100px]"
+              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 min-h-[100px] text-gray-900"
               placeholder="Add your notes here..."
             />
           </div>
@@ -173,7 +179,7 @@ export default function AddPage() {
               id="quickText"
               value={quickText}
               onChange={(e) => { setQuickText(e.target.value); setQuickError(null); }}
-              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 min-h-[140px]"
+              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 min-h-[140px] text-gray-900"
               placeholder="Paste any text — the first URL found will be saved."
               required
             />
