@@ -22,7 +22,7 @@ vi.hoisted(() => {
   process.env.NOTION_DATABASE_ID = "test-db-id";
 });
 
-import { getTagOptions, createTag } from "@/lib/tag-ops";
+import { getTagOptions, createTag, renameTag, deleteTag } from "@/lib/tag-ops";
 import { Client } from "@notionhq/client";
 
 // mockClient.databases === mockDatabases — same vi.fn() references
@@ -110,5 +110,98 @@ describe("createTag", () => {
     });
 
     await expect(createTag("javascript")).rejects.toThrow("Tag already exists");
+  });
+});
+
+describe("renameTag", () => {
+  it("updates the option name in the schema by id", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "react", color: "green" },
+            ],
+          },
+        },
+      },
+    });
+    mockClient.databases.update.mockResolvedValueOnce({});
+
+    await renameTag("js", "javascript");
+
+    expect(mockClient.databases.update).toHaveBeenCalledWith({
+      database_id: "test-db-id",
+      properties: {
+        Tags: {
+          multi_select: {
+            options: [
+              { id: "id1", name: "javascript", color: "blue" },
+              { id: "id2", name: "react", color: "green" },
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it("throws if source tag not found", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: { options: [{ id: "id1", name: "react", color: "green" }] },
+        },
+      },
+    });
+
+    await expect(renameTag("nonexistent", "new")).rejects.toThrow("Tag not found");
+  });
+});
+
+describe("deleteTag", () => {
+  it("removes the option from the schema", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "react", color: "green" },
+            ],
+          },
+        },
+      },
+    });
+    mockClient.databases.update.mockResolvedValueOnce({});
+
+    await deleteTag("js");
+
+    expect(mockClient.databases.update).toHaveBeenCalledWith({
+      database_id: "test-db-id",
+      properties: {
+        Tags: {
+          multi_select: {
+            options: [{ id: "id2", name: "react", color: "green" }],
+          },
+        },
+      },
+    });
+  });
+
+  it("throws if tag not found", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: { options: [] },
+        },
+      },
+    });
+
+    await expect(deleteTag("missing")).rejects.toThrow("Tag not found");
   });
 });

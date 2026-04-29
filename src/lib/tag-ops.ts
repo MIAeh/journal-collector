@@ -34,3 +34,36 @@ export async function createTag(name: string): Promise<void> {
     },
   });
 }
+
+export async function renameTag(oldName: string, newName: string): Promise<void> {
+  const options = await getTagOptions();
+  const target = options.find((o) => o.name === oldName);
+  if (!target) throw new Error("Tag not found");
+  await notion.databases.update({
+    database_id: DATABASE_ID,
+    properties: {
+      Tags: {
+        multi_select: {
+          options: options.map((o) =>
+            o.id === target.id ? { ...o, name: newName } : o
+          ),
+        },
+      },
+    } as Parameters<typeof notion.databases.update>[0]["properties"],
+  });
+}
+
+export async function deleteTag(name: string): Promise<void> {
+  const options = await getTagOptions();
+  if (!options.some((o) => o.name === name)) throw new Error("Tag not found");
+  await notion.databases.update({
+    database_id: DATABASE_ID,
+    properties: {
+      Tags: {
+        multi_select: {
+          options: options.filter((o) => o.name !== name),
+        },
+      },
+    } as Parameters<typeof notion.databases.update>[0]["properties"],
+  });
+}
