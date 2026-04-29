@@ -367,4 +367,59 @@ describe("mergeTag", () => {
 
     await expect(mergeTag("js", "nonexistent")).rejects.toThrow("Target tag not found");
   });
+
+  it("paginates through all pages when has_more is true", async () => {
+    // getTagOptions
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "javascript", color: "yellow" },
+            ],
+          },
+        },
+      },
+    });
+    // First page query — has_more: true
+    mockClient.databases.query.mockResolvedValueOnce({
+      results: [{ id: "page1", properties: { Tags: { multi_select: [{ name: "js" }] } } }],
+      has_more: true,
+      next_cursor: "cursor-abc",
+    });
+    mockClient.pages.update.mockResolvedValueOnce({});
+    // Second page query — has_more: false
+    mockClient.databases.query.mockResolvedValueOnce({
+      results: [{ id: "page2", properties: { Tags: { multi_select: [{ name: "js" }] } } }],
+      has_more: false,
+      next_cursor: null,
+    });
+    mockClient.pages.update.mockResolvedValueOnce({});
+    // getTagOptions inside deleteTag
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "javascript", color: "yellow" },
+            ],
+          },
+        },
+      },
+    });
+    mockClient.databases.update.mockResolvedValueOnce({});
+
+    await mergeTag("js", "javascript");
+
+    expect(mockClient.pages.update).toHaveBeenCalledTimes(2);
+    expect(mockClient.databases.query).toHaveBeenCalledTimes(2);
+    // Second call should use the cursor
+    expect(mockClient.databases.query).toHaveBeenNthCalledWith(2,
+      expect.objectContaining({ start_cursor: "cursor-abc" })
+    );
+  });
 });
