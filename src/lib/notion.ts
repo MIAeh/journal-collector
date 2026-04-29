@@ -332,7 +332,7 @@ export async function listTags(): Promise<TagWithCount[]> {
     })
   );
 
-  return tagCounts.filter((tag: TagWithCount) => tag.count > 0);
+  return tagCounts;
 }
 
 /**

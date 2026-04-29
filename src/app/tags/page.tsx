@@ -4,9 +4,21 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { TagWithCount } from "@/lib/types";
 
+type BusyAction = "renaming" | "deleting" | "merging";
+
+async function parseErrorMessage(r: Response, fallback: string): Promise<string> {
+  try {
+    const { error } = await r.json();
+    return error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function TagsPage() {
   const [tags, setTags] = useState<TagWithCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState("");
   const [creating, setCreating] = useState(false);
   const [renamingTag, setRenamingTag] = useState<string | null>(null);
@@ -14,20 +26,27 @@ export default function TagsPage() {
   const [mergingTag, setMergingTag] = useState<string | null>(null);
   const [mergeTarget, setMergeTarget] = useState("");
   const [busyTag, setBusyTag] = useState<string | null>(null);
-  const [busyAction, setBusyAction] = useState<string | null>(null); // "renaming" | "deleting" | "merging"
+  const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
 
   const fetchTags = async () => {
     try {
       const r = await fetch("/api/tags");
-      if (r.ok) setTags(await r.json());
+      if (r.ok) {
+        setTags(await r.json());
+        setFetchError(null);
+      } else {
+        const msg = await parseErrorMessage(r, "Failed to load tags");
+        setFetchError(msg);
+      }
     } catch (err) {
       console.error("Failed to fetch tags:", err);
+      setFetchError("Failed to load tags");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchTags(); }, []);
+  useEffect(() => { fetchTags(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +59,7 @@ export default function TagsPage() {
         body: JSON.stringify({ name: newTagName.trim() }),
       });
       if (!r.ok) {
-        const { error } = await r.json();
-        alert(error || "Failed to create tag");
+        alert(await parseErrorMessage(r, "Failed to create tag"));
         return;
       }
       setNewTagName("");
@@ -65,8 +83,7 @@ export default function TagsPage() {
         body: JSON.stringify({ newName: renameValue.trim() }),
       });
       if (!r.ok) {
-        const { error } = await r.json();
-        alert(error || "Failed to rename tag");
+        alert(await parseErrorMessage(r, "Failed to rename tag"));
         return;
       }
       setRenamingTag(null);
@@ -89,8 +106,7 @@ export default function TagsPage() {
     try {
       const r = await fetch(`/api/tags/${encodeURIComponent(name)}`, { method: "DELETE" });
       if (!r.ok) {
-        const { error } = await r.json();
-        alert(error || "Failed to delete tag");
+        alert(await parseErrorMessage(r, "Failed to delete tag"));
         return;
       }
       await fetchTags();
@@ -113,8 +129,7 @@ export default function TagsPage() {
         body: JSON.stringify({ source, target: mergeTarget }),
       });
       if (!r.ok) {
-        const { error } = await r.json();
-        alert(error || "Failed to merge tags");
+        alert(await parseErrorMessage(r, "Failed to merge tags"));
         return;
       }
       await fetchTags();
@@ -143,6 +158,10 @@ export default function TagsPage() {
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Tags</h1>
 
+      {fetchError && (
+        <p className="mb-4 text-sm text-red-600">{fetchError}</p>
+      )}
+
       {/* Create */}
       <form onSubmit={handleCreate} className="flex gap-2 mb-6">
         <input
@@ -167,7 +186,7 @@ export default function TagsPage() {
         </button>
       </form>
 
-      {tags.length === 0 ? (
+      {tags.length === 0 && !fetchError ? (
         <p className="text-center text-gray-500 py-8">No tags yet.</p>
       ) : (
         <div className="space-y-2">
@@ -178,7 +197,11 @@ export default function TagsPage() {
             >
               {/* Busy overlay for slow operations */}
               {busyTag === tag.name && (
-                <div className="absolute inset-0 bg-white/70 rounded-lg flex items-center justify-center gap-2 text-sm text-gray-600 z-10">
+                <div
+                  role="status"
+                  aria-label={`${busyAction} in progress`}
+                  className="absolute inset-0 bg-white/70 rounded-lg flex items-center justify-center gap-2 text-sm text-gray-600 z-10"
+                >
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -202,7 +225,8 @@ export default function TagsPage() {
                   />
                   <button
                     onClick={() => handleRename(tag.name)}
-                    className="px-3 py-1 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800"
+                    disabled={busyTag === tag.name}
+                    className="px-3 py-1 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 disabled:opacity-50"
                   >
                     Save
                   </button>
@@ -257,21 +281,21 @@ export default function TagsPage() {
                     <button
                       onClick={() => { setRenamingTag(tag.name); setRenameValue(tag.name); }}
                       className="p-1.5 text-gray-400 hover:text-gray-700 rounded"
-                      title="Rename"
+                      aria-label="Rename"
                     >
                       ✏️
                     </button>
                     <button
                       onClick={() => { setMergingTag(tag.name); setMergeTarget(""); }}
                       className="p-1.5 text-gray-400 hover:text-gray-700 rounded"
-                      title="Merge into another tag"
+                      aria-label="Merge into another tag"
                     >
                       🔀
                     </button>
                     <button
                       onClick={() => handleDelete(tag.name)}
                       className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                      title="Delete"
+                      aria-label="Delete"
                     >
                       🗑️
                     </button>
