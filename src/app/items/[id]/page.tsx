@@ -133,7 +133,7 @@ export default function ItemDetailPage() {
       {/* Image gallery */}
       {item.images.length > 0 && (
         <div className="mb-6">
-          <div className="rounded-xl overflow-hidden aspect-video bg-gray-100">
+          <div className="rounded-xl overflow-hidden aspect-[3/4] bg-gray-100">
             <ImageWithProxy
               pageId={item.id}
               directUrl={item.images[activeImageIndex] ?? null}
