@@ -27,7 +27,7 @@ vi.mock("@notionhq/client", () => ({
   }),
 }));
 
-import { getItem, updateItem } from "@/lib/notion";
+import { getItem, updateItem, saveItem } from "@/lib/notion";
 
 function makePage(overrides: Record<string, unknown> = {}) {
   return {
@@ -129,5 +129,38 @@ describe("updateItem — images field", () => {
         }),
       })
     );
+  });
+});
+
+describe("saveItem — images field", () => {
+  it("sets Image files when images array is provided", async () => {
+    const page = makePage({
+      Image: {
+        type: "files",
+        files: [{ type: "external", name: "Image", external: { url: "https://img.com/a.jpg" } }],
+      },
+    });
+    mockClient.pages.create.mockResolvedValueOnce(page);
+
+    await saveItem({ url: "https://example.com", images: ["https://img.com/a.jpg"] });
+
+    expect(mockClient.pages.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          Image: {
+            files: [{ type: "external", name: "Image", external: { url: "https://img.com/a.jpg" } }],
+          },
+        }),
+      })
+    );
+  });
+
+  it("omits Image property when images array is empty", async () => {
+    mockClient.pages.create.mockResolvedValueOnce(makePage());
+
+    await saveItem({ url: "https://example.com", images: [] });
+
+    const call = mockClient.pages.create.mock.calls[0][0];
+    expect(call.properties).not.toHaveProperty("Image");
   });
 });

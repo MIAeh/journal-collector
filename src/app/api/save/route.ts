@@ -14,8 +14,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let finalTitle = title as string | undefined;
-    let finalImages = (images as string[] | undefined) ?? [];
+    let finalTitle: string | undefined =
+      typeof title === "string" && title.trim() ? title.trim() : undefined;
+    let finalImages: string[] =
+      Array.isArray(images) && images.every((x) => typeof x === "string")
+        ? (images as string[])
+        : [];
 
     if (!finalTitle || finalImages.length === 0) {
       const ogData = await fetchOgData(url);
