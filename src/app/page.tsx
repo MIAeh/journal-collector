@@ -89,7 +89,7 @@ function CollectionContent() {
         />
       </div>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {items.map((item) => (
           <ItemCard key={item.id} item={item} />
         ))}

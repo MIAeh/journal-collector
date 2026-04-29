@@ -57,10 +57,10 @@ describe("ItemCard — compact layout without image", () => {
     screen.getByText("Test Article"); // throws if not found
   });
 
-  it("renders tags in the compact layout", () => {
+  it("renders the first tag in the compact layout", () => {
     const item = makeItem({ images: [], tags: ["react", "typescript"] });
     render(<ItemCard item={item} />);
     screen.getByText("react");
-    screen.getByText("typescript");
+    expect(screen.queryByText("typescript")).toBeFalsy();
   });
 });

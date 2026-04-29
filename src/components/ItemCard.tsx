@@ -64,54 +64,25 @@ export default function ItemCard({ item }: ItemCardProps) {
     );
   }
 
-  // Compact horizontal row for items with no image
-  const domain = extractDomain(item.url);
-  const timeAgo = getTimeAgo(item.createdAt);
-
+  // Compact card for items with no image
   return (
     <Link
       href={`/items/${item.id}`}
-      className="flex items-center gap-3 p-4 bg-white border-b hover:bg-gray-50 transition-colors"
+      className="block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow p-3"
     >
-      <ImageWithProxy
-        pageId={item.id}
-        directUrl={null}
-        alt={item.title}
-        className="w-12 h-12 md:w-16 md:h-16 rounded-lg flex-shrink-0"
-      />
-      <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-medium text-gray-900 truncate">
-          {item.title}
-        </h3>
-        <p className="text-xs text-gray-500 mt-1">
-          {domain} · {timeAgo}
-        </p>
+      <h3 className="text-sm font-medium text-gray-900 line-clamp-3 mb-2">
+        {item.title}
+      </h3>
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-xs text-gray-500 truncate">
+          {extractDomain(item.url)} · {getTimeAgo(item.createdAt)}
+        </span>
         {item.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {item.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className="inline-block bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+          <span className="inline-block bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded shrink-0">
+            {item.tags[0]}
+          </span>
         )}
       </div>
-      <svg
-        className="hidden md:block w-5 h-5 text-gray-400 flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 5l7 7-7 7"
-        />
-      </svg>
     </Link>
   );
 }
