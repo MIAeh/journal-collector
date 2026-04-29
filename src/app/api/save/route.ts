@@ -5,7 +5,7 @@ import { fetchOgData } from "@/lib/og";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { url, title, imageUrl, tags, comment } = body;
+    const { url, title, images, tags, comment } = body;
 
     if (!url || typeof url !== "string") {
       return NextResponse.json(
@@ -14,19 +14,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let finalTitle = title;
-    let finalImageUrl = imageUrl;
+    let finalTitle = title as string | undefined;
+    let finalImages = (images as string[] | undefined) ?? [];
 
-    if (!finalTitle || !finalImageUrl) {
+    if (!finalTitle || finalImages.length === 0) {
       const ogData = await fetchOgData(url);
       finalTitle = finalTitle || ogData.title;
-      finalImageUrl = finalImageUrl || ogData.imageUrl;
+      if (finalImages.length === 0 && ogData.imageUrl) {
+        finalImages = [ogData.imageUrl];
+      }
     }
 
     const item = await saveItem({
       url,
       title: finalTitle,
-      imageUrl: finalImageUrl,
+      images: finalImages,
       tags: tags || [],
       comment: comment || undefined,
     });

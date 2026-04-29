@@ -12,98 +12,53 @@ const notion = new Client({
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
 
-/**
- * Extracts image URL from Notion page Image property
- */
-function extractImageUrl(page: any): string | null {
+function extractImages(page: any): string[] {
   const imageProperty = page.properties.Image;
-  if (!imageProperty || imageProperty.type !== "files") {
-    return null;
-  }
-
-  const files = imageProperty.files;
-  if (!files || files.length === 0) {
-    return null;
-  }
-
-  const file = files[0];
-  if (file.type === "external") {
-    return file.external.url;
-  } else if (file.type === "file") {
-    return file.file.url;
-  }
-
-  return null;
+  if (!imageProperty || imageProperty.type !== "files") return [];
+  return imageProperty.files
+    .map((file: any) => {
+      if (file.type === "external") return file.external.url as string;
+      if (file.type === "file") return file.file.url as string;
+      return null;
+    })
+    .filter((url: string | null): url is string => url !== null);
 }
 
-/**
- * Maps Notion page to CollectionItem
- */
 function pageToItem(page: any): CollectionItem {
   const title =
     page.properties.Title?.title?.[0]?.plain_text || "Untitled";
-  const url =
-    page.properties.URL?.url || "";
+  const url = page.properties.URL?.url || "";
   const tags =
     page.properties.Tags?.multi_select?.map((tag: any) => tag.name) || [];
   const comment =
     page.properties.Comment?.rich_text?.[0]?.plain_text || "";
-  const imageUrl = extractImageUrl(page);
+  const images = extractImages(page);
   const createdAt = page.created_time;
 
-  return {
-    id: page.id,
-    title,
-    url,
-    imageUrl,
-    tags,
-    comment,
-    createdAt,
-  };
+  return { id: page.id, title, url, images, tags, comment, createdAt };
 }
 
-/**
- * Saves a new item to Notion database
- */
 export async function saveItem(input: SaveItemInput): Promise<CollectionItem> {
   const properties: any = {
     Title: {
-      title: [
-        {
-          text: {
-            content: input.title || input.url,
-          },
-        },
-      ],
+      title: [{ text: { content: input.title || input.url } }],
     },
-    URL: {
-      url: input.url,
-    },
+    URL: { url: input.url },
     Tags: {
       multi_select: (input.tags || []).map((tag) => ({ name: tag })),
     },
     Comment: {
-      rich_text: [
-        {
-          text: {
-            content: input.comment || "",
-          },
-        },
-      ],
+      rich_text: [{ text: { content: input.comment || "" } }],
     },
   };
 
-  if (input.imageUrl) {
+  if (input.images?.length) {
     properties.Image = {
-      files: [
-        {
-          type: "external",
-          name: "Image",
-          external: {
-            url: input.imageUrl,
-          },
-        },
-      ],
+      files: input.images.map((url) => ({
+        type: "external",
+        name: "Image",
+        external: { url },
+      })),
     };
   }
 
@@ -115,9 +70,6 @@ export async function saveItem(input: SaveItemInput): Promise<CollectionItem> {
   return pageToItem(response);
 }
 
-/**
- * Lists items from database with optional filtering, pagination, and search
- */
 export async function listItems(options: {
   cursor?: string;
   tag?: string;
@@ -131,27 +83,15 @@ export async function listItems(options: {
   if (tag) {
     filter.and.push({
       property: "Tags",
-      multi_select: {
-        contains: tag,
-      },
+      multi_select: { contains: tag },
     });
   }
 
   if (search) {
     filter.and.push({
       or: [
-        {
-          property: "Title",
-          title: {
-            contains: search,
-          },
-        },
-        {
-          property: "Comment",
-          rich_text: {
-            contains: search,
-          },
-        },
+        { property: "Title", title: { contains: search } },
+        { property: "Comment", rich_text: { contains: search } },
       ],
     });
   }
@@ -159,21 +99,11 @@ export async function listItems(options: {
   const queryOptions: any = {
     database_id: DATABASE_ID,
     page_size: pageSize,
-    sorts: [
-      {
-        timestamp: "created_time",
-        direction: "descending",
-      },
-    ],
+    sorts: [{ timestamp: "created_time", direction: "descending" }],
   };
 
-  if (filter.and.length > 0) {
-    queryOptions.filter = filter;
-  }
-
-  if (cursor) {
-    queryOptions.start_cursor = cursor;
-  }
+  if (filter.and.length > 0) queryOptions.filter = filter;
+  if (cursor) queryOptions.start_cursor = cursor;
 
   const response = await notion.databases.query(queryOptions);
 
@@ -184,17 +114,11 @@ export async function listItems(options: {
   };
 }
 
-/**
- * Retrieves a single item by page ID
- */
 export async function getItem(pageId: string): Promise<CollectionItem> {
   const page = await notion.pages.retrieve({ page_id: pageId });
   return pageToItem(page);
 }
 
-/**
- * Updates an existing item
- */
 export async function updateItem(
   pageId: string,
   updates: Partial<SaveItemInput>
@@ -203,20 +127,12 @@ export async function updateItem(
 
   if (updates.title !== undefined) {
     properties.Title = {
-      title: [
-        {
-          text: {
-            content: updates.title,
-          },
-        },
-      ],
+      title: [{ text: { content: updates.title } }],
     };
   }
 
   if (updates.url !== undefined) {
-    properties.URL = {
-      url: updates.url,
-    };
+    properties.URL = { url: updates.url };
   }
 
   if (updates.tags !== undefined) {
@@ -227,34 +143,18 @@ export async function updateItem(
 
   if (updates.comment !== undefined) {
     properties.Comment = {
-      rich_text: [
-        {
-          text: {
-            content: updates.comment,
-          },
-        },
-      ],
+      rich_text: [{ text: { content: updates.comment } }],
     };
   }
 
-  if (updates.imageUrl !== undefined) {
-    if (updates.imageUrl) {
-      properties.Image = {
-        files: [
-          {
-            type: "external",
-            name: "Image",
-            external: {
-              url: updates.imageUrl,
-            },
-          },
-        ],
-      };
-    } else {
-      properties.Image = {
-        files: [],
-      };
-    }
+  if (updates.images !== undefined) {
+    properties.Image = {
+      files: updates.images.map((url) => ({
+        type: "external",
+        name: "Image",
+        external: { url },
+      })),
+    };
   }
 
   const response = await notion.pages.update({
@@ -265,9 +165,6 @@ export async function updateItem(
   return pageToItem(response);
 }
 
-/**
- * Deletes (archives) an item
- */
 export async function deleteItem(pageId: string): Promise<void> {
   await notion.pages.update({
     page_id: pageId,
@@ -275,47 +172,28 @@ export async function deleteItem(pageId: string): Promise<void> {
   });
 }
 
-/**
- * Lists all tags from database schema with counts
- */
 export async function listTags(): Promise<TagWithCount[]> {
-  // Get database to retrieve schema
   const database = await notion.databases.retrieve({
     database_id: DATABASE_ID,
   });
 
-  // Type guard to check if response is a full database object
-  if (!("properties" in database)) {
-    return [];
-  }
+  if (!("properties" in database)) return [];
 
   const tagsProperty = (database as any).properties.Tags;
-  if (
-    !tagsProperty ||
-    tagsProperty.type !== "multi_select"
-  ) {
-    return [];
-  }
+  if (!tagsProperty || tagsProperty.type !== "multi_select") return [];
 
   const tagOptions = tagsProperty.multi_select.options;
 
-  // Query for each tag to get counts
   const tagCounts = await Promise.all(
     tagOptions.map(async (option: any) => {
       let count = 0;
       let hasMore = true;
-      let cursor: string | undefined = undefined;
+      let cursor: string | undefined;
 
-      // Paginate through all results to get accurate count
       while (hasMore) {
         const response = await notion.databases.query({
           database_id: DATABASE_ID,
-          filter: {
-            property: "Tags",
-            multi_select: {
-              contains: option.name,
-            },
-          },
+          filter: { property: "Tags", multi_select: { contains: option.name } },
           page_size: 100,
           start_cursor: cursor,
         });
@@ -325,20 +203,15 @@ export async function listTags(): Promise<TagWithCount[]> {
         cursor = response.next_cursor || undefined;
       }
 
-      return {
-        name: option.name,
-        count,
-      };
+      return { name: option.name, count };
     })
   );
 
   return tagCounts;
 }
 
-/**
- * Gets fresh image URL for a page (for proxy usage)
- */
 export async function getImageUrl(pageId: string): Promise<string | null> {
   const page = await notion.pages.retrieve({ page_id: pageId });
-  return extractImageUrl(page);
+  const images = extractImages(page);
+  return images[0] ?? null;
 }

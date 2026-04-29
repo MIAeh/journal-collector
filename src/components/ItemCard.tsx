@@ -39,7 +39,7 @@ export default function ItemCard({ item }: ItemCardProps) {
     >
       <ImageWithProxy
         pageId={item.id}
-        directUrl={item.imageUrl}
+        directUrl={item.images[0] ?? null}
         alt={item.title}
         className="w-12 h-12 md:w-16 md:h-16 rounded-lg flex-shrink-0"
       />

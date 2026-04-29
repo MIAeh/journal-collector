@@ -80,11 +80,11 @@ export default function ItemDetailPage() {
         Back
       </button>
 
-      {item.imageUrl && (
+      {item.images[0] && (
         <div className="mb-6 rounded-lg overflow-hidden">
           <ImageWithProxy
             pageId={item.id}
-            directUrl={item.imageUrl}
+            directUrl={item.images[0] ?? null}
             alt={item.title}
             className="w-full h-auto"
           />

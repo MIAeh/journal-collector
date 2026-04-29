@@ -2,7 +2,7 @@ export interface CollectionItem {
   id: string;
   title: string;
   url: string;
-  imageUrl: string | null;
+  images: string[];
   tags: string[];
   comment: string;
   createdAt: string;
@@ -11,7 +11,7 @@ export interface CollectionItem {
 export interface SaveItemInput {
   url: string;
   title?: string;
-  imageUrl?: string;
+  images?: string[];
   tags?: string[];
   comment?: string;
 }
