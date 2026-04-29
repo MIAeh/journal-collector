@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // vi.hoisted ensures the shared instance is available inside vi.mock factory
 const mockDatabases = vi.hoisted(() => ({
@@ -16,9 +16,11 @@ vi.mock("@notionhq/client", () => ({
   }),
 }));
 
-// Mock env
-vi.stubEnv("NOTION_API_KEY", "test-key");
-vi.stubEnv("NOTION_DATABASE_ID", "test-db-id");
+// Stub env via vi.hoisted so the values are in place before any module body runs
+vi.hoisted(() => {
+  process.env.NOTION_API_KEY = "test-key";
+  process.env.NOTION_DATABASE_ID = "test-db-id";
+});
 
 import { getTagOptions, createTag } from "@/lib/tag-ops";
 import { Client } from "@notionhq/client";
@@ -28,6 +30,10 @@ const mockClient = new (Client as any)();
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("getTagOptions", () => {
@@ -51,6 +57,12 @@ describe("getTagOptions", () => {
       { id: "id1", name: "javascript", color: "blue" },
       { id: "id2", name: "react", color: "green" },
     ]);
+  });
+
+  it("returns empty array when Tags property is missing", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({ properties: {} });
+    const options = await getTagOptions();
+    expect(options).toEqual([]);
   });
 });
 
