@@ -54,7 +54,7 @@ export default function ItemCard({ item }: ItemCardProps) {
               {extractDomain(item.url)} · {getTimeAgo(item.createdAt)}
             </span>
             {item.tags.length > 0 && (
-              <span className="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded shrink-0">
+              <span className="inline-block bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded">
                 {item.tags[0]}
               </span>
             )}

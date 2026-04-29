@@ -60,7 +60,7 @@ describe("ItemCard — compact layout without image", () => {
   it("renders tags in the compact layout", () => {
     const item = makeItem({ images: [], tags: ["react", "typescript"] });
     render(<ItemCard item={item} />);
-    expect(screen.getByText("react")).toBeTruthy();
-    expect(screen.getByText("typescript")).toBeTruthy();
+    screen.getByText("react");
+    screen.getByText("typescript");
   });
 });
