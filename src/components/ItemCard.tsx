@@ -53,9 +53,9 @@ export default function ItemCard({ item }: ItemCardProps) {
             <span className="text-xs text-gray-500">
               {extractDomain(item.url)} · {getTimeAgo(item.createdAt)}
             </span>
-            {item.tags[0] && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
-                #{item.tags[0]}
+            {item.tags.length > 0 && (
+              <span className="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded shrink-0">
+                {item.tags[0]}
               </span>
             )}
           </div>
@@ -86,12 +86,12 @@ export default function ItemCard({ item }: ItemCardProps) {
         <p className="text-xs text-gray-500 mt-1">
           {domain} · {timeAgo}
         </p>
-        {item.tags && item.tags.length > 0 && (
+        {item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
-            {item.tags.map((tag) => (
+            {item.tags.slice(0, 2).map((tag) => (
               <span
                 key={tag}
-                className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded"
+                className="inline-block bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded"
               >
                 {tag}
               </span>

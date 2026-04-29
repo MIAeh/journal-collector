@@ -28,7 +28,19 @@ describe("ItemCard — vertical layout with image", () => {
     render(<ItemCard item={item} />);
     const title = screen.getByText("Test Article");
     // title should be inside the card, after the image container
-    expect(title).toBeTruthy();
+    void title;
+  });
+
+  it("renders the first tag in the vertical card", () => {
+    const item = makeItem({ images: ["https://img.com/photo.jpg"], tags: ["react", "typescript"] });
+    render(<ItemCard item={item} />);
+    expect(screen.getByText("react")).toBeTruthy();
+  });
+
+  it("does not render more than one tag in the vertical card", () => {
+    const item = makeItem({ images: ["https://img.com/photo.jpg"], tags: ["react", "typescript"] });
+    render(<ItemCard item={item} />);
+    expect(screen.queryByText("typescript")).toBeFalsy();
   });
 });
 
@@ -42,6 +54,13 @@ describe("ItemCard — compact layout without image", () => {
   it("renders title directly", () => {
     const item = makeItem({ images: [] });
     render(<ItemCard item={item} />);
-    expect(screen.getByText("Test Article")).toBeTruthy();
+    screen.getByText("Test Article"); // throws if not found
+  });
+
+  it("renders tags in the compact layout", () => {
+    const item = makeItem({ images: [], tags: ["react", "typescript"] });
+    render(<ItemCard item={item} />);
+    expect(screen.getByText("react")).toBeTruthy();
+    expect(screen.getByText("typescript")).toBeTruthy();
   });
 });
