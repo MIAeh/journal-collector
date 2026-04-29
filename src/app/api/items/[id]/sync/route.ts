@@ -95,7 +95,7 @@ function extractMetaImages(html: string, pageUrl: string): string[] {
   const add = (raw: string) => {
     if (!raw) return;
     try {
-      const abs = new URL(raw, pageUrl).href;
+      const abs = new URL(raw, pageUrl).href.replace(/^http:\/\//i, "https://");
       if (!seen.has(abs)) { seen.add(abs); results.push(abs); }
     } catch { /* skip */ }
   };

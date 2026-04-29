@@ -17,17 +17,18 @@ export default function ImageWithProxy({
   className = "",
   hideOnError = false,
 }: ImageWithProxyProps) {
-  // Try the direct URL first — the browser (with VPN) can reach CDN URLs that
-  // Vercel's US servers cannot. On error, fall back to the proxy which now
-  // does a redirect (so the browser still fetches directly, just via a lookup).
-  const initialSrc = directUrl ?? `/api/image-proxy?pageId=${pageId}`;
+  // Upgrade http:// → https:// to prevent mixed-content blocks (app is HTTPS).
+  const secureUrl = directUrl
+    ? directUrl.replace(/^http:\/\//i, "https://")
+    : null;
+
+  const initialSrc = secureUrl ?? `/api/image-proxy?pageId=${pageId}`;
 
   const [imgSrc, setImgSrc] = useState<string>(initialSrc);
   const [hasError, setHasError] = useState(false);
 
   const handleError = () => {
-    if (directUrl && imgSrc === directUrl && pageId) {
-      // Direct URL failed — use proxy pageId lookup as fallback
+    if (secureUrl && imgSrc === secureUrl && pageId) {
       setImgSrc(`/api/image-proxy?pageId=${pageId}`);
     } else {
       setHasError(true);

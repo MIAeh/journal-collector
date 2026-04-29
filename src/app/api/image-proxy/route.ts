@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
 
-    // Redirect the browser directly to the image URL instead of proxying bytes
-    // through Vercel's US servers. CDNs like XHS block Vercel IPs but allow
-    // direct browser requests (especially with a VPN). The browser follows the
-    // redirect and fetches the image itself.
-    return NextResponse.redirect(imageUrl, {
+    // Upgrade http:// → https:// to avoid mixed-content blocks in the browser
+    // (app is served over HTTPS; HTTP image URLs are blocked by modern browsers).
+    const secureUrl = imageUrl.replace(/^http:\/\//i, "https://");
+
+    return NextResponse.redirect(secureUrl, {
       status: 302,
       headers: {
         "Cache-Control": "public, max-age=3300",
