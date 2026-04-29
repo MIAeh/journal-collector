@@ -29,6 +29,42 @@ interface ItemCardProps {
 }
 
 export default function ItemCard({ item }: ItemCardProps) {
+  const primaryImage = item.images[0] ?? null;
+
+  if (primaryImage) {
+    return (
+      <Link
+        href={`/items/${item.id}`}
+        className="block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      >
+        <div className="aspect-video w-full overflow-hidden bg-gray-100">
+          <ImageWithProxy
+            pageId={item.id}
+            directUrl={primaryImage}
+            alt={item.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="p-3">
+          <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
+            {item.title}
+          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-gray-500">
+              {extractDomain(item.url)} · {getTimeAgo(item.createdAt)}
+            </span>
+            {item.tags[0] && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
+                #{item.tags[0]}
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  // Compact horizontal row for items with no image
   const domain = extractDomain(item.url);
   const timeAgo = getTimeAgo(item.createdAt);
 
@@ -39,7 +75,7 @@ export default function ItemCard({ item }: ItemCardProps) {
     >
       <ImageWithProxy
         pageId={item.id}
-        directUrl={item.images[0] ?? null}
+        directUrl={null}
         alt={item.title}
         className="w-12 h-12 md:w-16 md:h-16 rounded-lg flex-shrink-0"
       />

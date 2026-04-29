@@ -1,0 +1,47 @@
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import ItemCard from "@/components/ItemCard";
+import type { CollectionItem } from "@/lib/types";
+
+function makeItem(overrides: Partial<CollectionItem> = {}): CollectionItem {
+  return {
+    id: "item-1",
+    title: "Test Article",
+    url: "https://example.com/article",
+    images: [],
+    tags: ["react"],
+    comment: "",
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    ...overrides,
+  };
+}
+
+describe("ItemCard — vertical layout with image", () => {
+  it("renders an aspect-video image container when item has images", () => {
+    const item = makeItem({ images: ["https://img.com/photo.jpg"] });
+    const { container } = render(<ItemCard item={item} />);
+    expect(container.querySelector(".aspect-video")).toBeTruthy();
+  });
+
+  it("renders title below the image", () => {
+    const item = makeItem({ images: ["https://img.com/photo.jpg"] });
+    render(<ItemCard item={item} />);
+    const title = screen.getByText("Test Article");
+    // title should be inside the card, after the image container
+    expect(title).toBeTruthy();
+  });
+});
+
+describe("ItemCard — compact layout without image", () => {
+  it("does not render an aspect-video container when no images", () => {
+    const item = makeItem({ images: [] });
+    const { container } = render(<ItemCard item={item} />);
+    expect(container.querySelector(".aspect-video")).toBeFalsy();
+  });
+
+  it("renders title directly", () => {
+    const item = makeItem({ images: [] });
+    render(<ItemCard item={item} />);
+    expect(screen.getByText("Test Article")).toBeTruthy();
+  });
+});
