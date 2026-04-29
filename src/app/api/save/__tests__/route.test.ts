@@ -32,6 +32,10 @@ describe("POST /api/save — API key guard", () => {
     process.env.SAVE_API_KEY = "test-secret-key-abc123";
   });
 
+  afterEach(() => {
+    delete process.env.SAVE_API_KEY;
+  });
+
   it("returns 401 when x-api-key header is absent", async () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(401);
@@ -49,5 +53,13 @@ describe("POST /api/save — API key guard", () => {
   it("returns 201 when x-api-key matches SAVE_API_KEY", async () => {
     const res = await POST(makeRequest({ "x-api-key": "test-secret-key-abc123" }));
     expect(res.status).toBe(201);
+  });
+
+  it("returns 401 when SAVE_API_KEY env var is not set", async () => {
+    delete process.env.SAVE_API_KEY;
+    const res = await POST(makeRequest({ "x-api-key": "any-key" }));
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("Unauthorized");
   });
 });

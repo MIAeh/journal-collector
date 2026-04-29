@@ -4,7 +4,8 @@ import { fetchOgData } from "@/lib/og";
 
 export async function POST(request: NextRequest) {
   const apiKey = request.headers.get("x-api-key");
-  if (!apiKey || apiKey !== process.env.SAVE_API_KEY) {
+  const expectedKey = process.env.SAVE_API_KEY;
+  if (!expectedKey || !apiKey || apiKey !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
