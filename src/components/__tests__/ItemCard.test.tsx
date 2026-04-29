@@ -17,10 +17,10 @@ function makeItem(overrides: Partial<CollectionItem> = {}): CollectionItem {
 }
 
 describe("ItemCard — vertical layout with image", () => {
-  it("renders an aspect-video image container when item has images", () => {
+  it("renders a 3:4 image container when item has images", () => {
     const item = makeItem({ images: ["https://img.com/photo.jpg"] });
     const { container } = render(<ItemCard item={item} />);
-    expect(container.querySelector(".aspect-video")).toBeTruthy();
+    expect(container.querySelector(".aspect-\\[3\\/4\\]")).toBeTruthy();
   });
 
   it("renders title below the image", () => {
@@ -45,10 +45,10 @@ describe("ItemCard — vertical layout with image", () => {
 });
 
 describe("ItemCard — compact layout without image", () => {
-  it("does not render an aspect-video container when no images", () => {
+  it("does not render a 3:4 container when no images", () => {
     const item = makeItem({ images: [] });
     const { container } = render(<ItemCard item={item} />);
-    expect(container.querySelector(".aspect-video")).toBeFalsy();
+    expect(container.querySelector(".aspect-\\[3\\/4\\]")).toBeFalsy();
   });
 
   it("renders title directly", () => {

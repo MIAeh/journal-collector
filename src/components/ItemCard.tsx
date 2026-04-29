@@ -37,7 +37,7 @@ export default function ItemCard({ item }: ItemCardProps) {
         href={`/items/${item.id}`}
         className="block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
       >
-        <div className="aspect-video w-full overflow-hidden bg-gray-100">
+        <div className="aspect-[3/4] w-full overflow-hidden bg-gray-100">
           <ImageWithProxy
             pageId={item.id}
             directUrl={primaryImage}
