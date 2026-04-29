@@ -9,32 +9,12 @@ export default function TagsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTags();
+    fetch("/api/tags")
+      .then((r) => r.json())
+      .then((data) => setTags(data))
+      .catch((err) => console.error("Failed to fetch tags:", err))
+      .finally(() => setLoading(false));
   }, []);
-
-  const fetchTags = async () => {
-    try {
-      const token = localStorage.getItem("collector_token");
-      if (!token) {
-        return;
-      }
-
-      const response = await fetch("/api/tags", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTags(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch tags:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

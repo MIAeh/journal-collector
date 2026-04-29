@@ -17,56 +17,22 @@ export default function ItemDetailPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    fetchItem();
+    fetch(`/api/items/${id}`)
+      .then((r) => {
+        if (r.status === 404) { setNotFound(true); return null; }
+        return r.json();
+      })
+      .then((data) => { if (data) setItem(data); })
+      .catch((err) => console.error("Failed to fetch item:", err))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  const fetchItem = async () => {
-    try {
-      const token = localStorage.getItem("collector_token");
-      if (!token) {
-        router.push("/");
-        return;
-      }
-
-      const response = await fetch(`/api/items/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setItem(data);
-      } else if (response.status === 404) {
-        setNotFound(true);
-      }
-    } catch (error) {
-      console.error("Failed to fetch item:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this item?")) {
-      return;
-    }
+    if (!confirm("Are you sure you want to delete this item?")) return;
 
     setDeleting(true);
     try {
-      const token = localStorage.getItem("collector_token");
-      if (!token) {
-        router.push("/");
-        return;
-      }
-
-      const response = await fetch(`/api/items/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const response = await fetch(`/api/items/${id}`, { method: "DELETE" });
       if (response.ok) {
         router.push("/");
       } else {
@@ -93,12 +59,9 @@ export default function ItemDetailPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-4">Item Not Found</h1>
         <p className="text-gray-600 mb-4">
-          The item you're looking for doesn't exist or has been deleted.
+          The item you&apos;re looking for doesn&apos;t exist or has been deleted.
         </p>
-        <button
-          onClick={() => router.push("/")}
-          className="text-gray-900 underline"
-        >
+        <button onClick={() => router.push("/")} className="text-gray-900 underline">
           Back to collection
         </button>
       </div>
@@ -111,18 +74,8 @@ export default function ItemDetailPage() {
         onClick={() => router.back()}
         className="mb-6 text-gray-600 hover:text-gray-900 flex items-center gap-2"
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back
       </button>

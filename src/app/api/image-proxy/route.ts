@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAuth } from "@/lib/auth";
 import { getImageUrl } from "@/lib/notion";
 
 export async function GET(request: NextRequest) {
-  const authError = await validateAuth(request);
-  if (authError) return authError;
-
   try {
     const { searchParams } = new URL(request.url);
     const pageId = searchParams.get("pageId");

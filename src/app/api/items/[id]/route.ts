@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAuth } from "@/lib/auth";
 import { getItem, updateItem, deleteItem } from "@/lib/notion";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await validateAuth(request);
-  if (authError) return authError;
-
   try {
     const { id } = await params;
     const item = await getItem(id);
@@ -31,9 +27,6 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await validateAuth(request);
-  if (authError) return authError;
-
   try {
     const { id } = await params;
     const body = await request.json();
@@ -58,9 +51,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await validateAuth(request);
-  if (authError) return authError;
-
   try {
     const { id } = await params;
     await deleteItem(id);

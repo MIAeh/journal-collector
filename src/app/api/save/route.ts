@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAuth } from "@/lib/auth";
 import { saveItem } from "@/lib/notion";
 import { fetchOgData } from "@/lib/og";
 
 export async function POST(request: NextRequest) {
-  const authError = await validateAuth(request);
-  if (authError) return authError;
-
   try {
     const body = await request.json();
     const { url, title, imageUrl, tags, comment } = body;
