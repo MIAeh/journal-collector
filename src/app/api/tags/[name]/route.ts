@@ -14,8 +14,11 @@ export async function PATCH(
     await renameTag(decodeURIComponent(name), newName.trim());
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("Error renaming tag:", error);
     const message = error instanceof Error ? error.message : "Failed to rename tag";
-    const status = message === "Tag not found" ? 404 : message === "Tag already exists" ? 409 : 500;
+    let status = 500;
+    if (message === "Tag not found") status = 404;
+    else if (message === "Tag already exists") status = 409;
     return NextResponse.json({ error: message }, { status });
   }
 }
@@ -29,6 +32,7 @@ export async function DELETE(
     await deleteTag(decodeURIComponent(name));
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("Error deleting tag:", error);
     const message = error instanceof Error ? error.message : "Failed to delete tag";
     const status = message === "Tag not found" ? 404 : 500;
     return NextResponse.json({ error: message }, { status });

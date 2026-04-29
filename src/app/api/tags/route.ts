@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     await createTag(name.trim());
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
+    console.error("Error creating tag:", error);
     const message = error instanceof Error ? error.message : "Failed to create tag";
     const status = message === "Tag already exists" ? 409 : 500;
     return NextResponse.json({ error: message }, { status });
