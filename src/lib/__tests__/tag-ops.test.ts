@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // vi.hoisted ensures the shared instance is available inside vi.mock factory
 const mockDatabases = vi.hoisted(() => ({
@@ -30,10 +30,6 @@ const mockClient = new (Client as any)();
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
 });
 
 describe("getTagOptions", () => {
@@ -158,6 +154,24 @@ describe("renameTag", () => {
     });
 
     await expect(renameTag("nonexistent", "new")).rejects.toThrow("Tag not found");
+  });
+
+  it("throws if new name already exists", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "javascript", color: "yellow" },
+            ],
+          },
+        },
+      },
+    });
+
+    await expect(renameTag("js", "JavaScript")).rejects.toThrow("Tag already exists");
   });
 });
 

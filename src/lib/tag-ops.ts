@@ -4,16 +4,19 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
 
+type SelectColor = "default" | "gray" | "brown" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "red";
+
 export interface TagOption {
   id: string;
   name: string;
-  color: string;
+  color: SelectColor;
 }
 
 export async function getTagOptions(): Promise<TagOption[]> {
   const db = await notion.databases.retrieve({ database_id: DATABASE_ID });
   if (!("properties" in db)) return [];
-  const prop = (db as any).properties?.Tags;
+  const dbWithProps = db as { properties: Record<string, unknown> };
+  const prop = dbWithProps.properties["Tags"] as any;
   if (prop?.type !== "multi_select") return [];
   return prop.multi_select.options as TagOption[];
 }
@@ -28,7 +31,7 @@ export async function createTag(name: string): Promise<void> {
     properties: {
       Tags: {
         multi_select: {
-          options: [...options, { name } as TagOption],
+          options: [...options, { name }],
         },
       },
     },
@@ -39,6 +42,9 @@ export async function renameTag(oldName: string, newName: string): Promise<void>
   const options = await getTagOptions();
   const target = options.find((o) => o.name === oldName);
   if (!target) throw new Error("Tag not found");
+  if (options.some((o) => o.id !== target.id && o.name.toLowerCase() === newName.toLowerCase())) {
+    throw new Error("Tag already exists");
+  }
   await notion.databases.update({
     database_id: DATABASE_ID,
     properties: {
