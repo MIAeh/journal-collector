@@ -73,3 +73,37 @@ export async function deleteTag(name: string): Promise<void> {
     } as Parameters<typeof notion.databases.update>[0]["properties"],
   });
 }
+
+export async function mergeTag(sourceName: string, targetName: string): Promise<void> {
+  const options = await getTagOptions();
+  if (!options.some((o) => o.name === sourceName)) throw new Error("Source tag not found");
+  if (!options.some((o) => o.name === targetName)) throw new Error("Target tag not found");
+
+  let cursor: string | undefined;
+  do {
+    const response = await notion.databases.query({
+      database_id: DATABASE_ID,
+      filter: { property: "Tags", multi_select: { contains: sourceName } },
+      page_size: 100,
+      ...(cursor ? { start_cursor: cursor } : {}),
+    } as any);
+
+    for (const page of (response as any).results) {
+      const currentTags: { name: string }[] =
+        page.properties?.Tags?.multi_select ?? [];
+      const alreadyHasTarget = currentTags.some((t) => t.name === targetName);
+      if (!alreadyHasTarget) {
+        await notion.pages.update({
+          page_id: page.id,
+          properties: {
+            Tags: { multi_select: [...currentTags, { name: targetName }] },
+          },
+        } as any);
+      }
+    }
+
+    cursor = (response as any).has_more ? (response as any).next_cursor : undefined;
+  } while (cursor);
+
+  await deleteTag(sourceName);
+}

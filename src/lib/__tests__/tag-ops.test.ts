@@ -1,16 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // vi.hoisted ensures the shared instance is available inside vi.mock factory
-const mockDatabases = vi.hoisted(() => ({
-  retrieve: vi.fn(),
-  update: vi.fn(),
+const { mockDatabases, mockPages } = vi.hoisted(() => ({
+  mockDatabases: {
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    query: vi.fn(),
+  },
+  mockPages: {
+    update: vi.fn(),
+  },
 }));
 
-// Mock @notionhq/client — every new Client() returns the same databases object
+// Mock @notionhq/client — every new Client() returns the same databases/pages objects
 vi.mock("@notionhq/client", () => ({
   Client: vi.fn().mockImplementation(function () {
     return {
       databases: mockDatabases,
+      pages: mockPages,
       search: vi.fn(),
     };
   }),
@@ -22,10 +29,10 @@ vi.hoisted(() => {
   process.env.NOTION_DATABASE_ID = "test-db-id";
 });
 
-import { getTagOptions, createTag, renameTag, deleteTag } from "@/lib/tag-ops";
+import { getTagOptions, createTag, renameTag, deleteTag, mergeTag } from "@/lib/tag-ops";
 import { Client } from "@notionhq/client";
 
-// mockClient.databases === mockDatabases — same vi.fn() references
+// mockClient.databases === mockDatabases, mockClient.pages === mockPages — same vi.fn() references
 const mockClient = new (Client as any)();
 
 beforeEach(() => {
@@ -217,5 +224,147 @@ describe("deleteTag", () => {
     });
 
     await expect(deleteTag("missing")).rejects.toThrow("Tag not found");
+  });
+});
+
+describe("mergeTag", () => {
+  it("adds target tag to source-tagged pages then deletes source from schema", async () => {
+    // getTagOptions call in mergeTag
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "javascript", color: "yellow" },
+            ],
+          },
+        },
+      },
+    });
+    // query pages with "js" tag
+    mockClient.databases.query.mockResolvedValueOnce({
+      results: [
+        {
+          id: "page1",
+          properties: {
+            Tags: { multi_select: [{ name: "js" }] },
+          },
+        },
+      ],
+      has_more: false,
+      next_cursor: null,
+    });
+    mockClient.pages.update.mockResolvedValueOnce({});
+    // getTagOptions call inside deleteTag
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "javascript", color: "yellow" },
+            ],
+          },
+        },
+      },
+    });
+    mockClient.databases.update.mockResolvedValueOnce({});
+
+    await mergeTag("js", "javascript");
+
+    expect(mockClient.pages.update).toHaveBeenCalledWith({
+      page_id: "page1",
+      properties: {
+        Tags: {
+          multi_select: [{ name: "js" }, { name: "javascript" }],
+        },
+      },
+    });
+    expect(mockClient.databases.update).toHaveBeenCalledWith({
+      database_id: "test-db-id",
+      properties: {
+        Tags: {
+          multi_select: {
+            options: [{ id: "id2", name: "javascript", color: "yellow" }],
+          },
+        },
+      },
+    });
+  });
+
+  it("skips pages that already have the target tag", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "javascript", color: "yellow" },
+            ],
+          },
+        },
+      },
+    });
+    mockClient.databases.query.mockResolvedValueOnce({
+      results: [
+        {
+          id: "page1",
+          properties: {
+            Tags: { multi_select: [{ name: "js" }, { name: "javascript" }] },
+          },
+        },
+      ],
+      has_more: false,
+      next_cursor: null,
+    });
+    // No pages.update call needed - page already has target tag
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: {
+            options: [
+              { id: "id1", name: "js", color: "blue" },
+              { id: "id2", name: "javascript", color: "yellow" },
+            ],
+          },
+        },
+      },
+    });
+    mockClient.databases.update.mockResolvedValueOnce({});
+
+    await mergeTag("js", "javascript");
+
+    expect(mockClient.pages.update).not.toHaveBeenCalled();
+  });
+
+  it("throws if source tag not found", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: { options: [{ id: "id1", name: "react", color: "blue" }] },
+        },
+      },
+    });
+
+    await expect(mergeTag("nonexistent", "react")).rejects.toThrow("Source tag not found");
+  });
+
+  it("throws if target tag not found", async () => {
+    mockClient.databases.retrieve.mockResolvedValueOnce({
+      properties: {
+        Tags: {
+          type: "multi_select",
+          multi_select: { options: [{ id: "id1", name: "js", color: "blue" }] },
+        },
+      },
+    });
+
+    await expect(mergeTag("js", "nonexistent")).rejects.toThrow("Target tag not found");
   });
 });
