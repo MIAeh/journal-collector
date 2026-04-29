@@ -3,6 +3,11 @@ import { saveItem } from "@/lib/notion";
 import { fetchOgData } from "@/lib/og";
 
 export async function POST(request: NextRequest) {
+  const apiKey = request.headers.get("x-api-key");
+  if (!apiKey || apiKey !== process.env.SAVE_API_KEY) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { url, title, images, tags, comment } = body;
