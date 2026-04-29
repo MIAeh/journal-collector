@@ -24,22 +24,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
 
-    const imageResponse = await fetch(imageUrl, {
+    // Redirect the browser directly to the image URL instead of proxying bytes
+    // through Vercel's US servers. CDNs like XHS block Vercel IPs but allow
+    // direct browser requests (especially with a VPN). The browser follows the
+    // redirect and fetches the image itself.
+    return NextResponse.redirect(imageUrl, {
+      status: 302,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; Collector/1.0)",
-        "Accept": "image/*,*/*;q=0.8",
-      },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!imageResponse.ok) {
-      return NextResponse.json({ error: "Failed to fetch image" }, { status: 502 });
-    }
-
-    const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-
-    return new NextResponse(imageResponse.body, {
-      headers: {
-        "Content-Type": contentType,
         "Cache-Control": "public, max-age=3300",
       },
     });

@@ -10,15 +10,6 @@ interface ImageWithProxyProps {
   hideOnError?: boolean;
 }
 
-function isNotionHosted(url: string): boolean {
-  try {
-    const { hostname } = new URL(url);
-    return hostname.endsWith("notion.so") || hostname.includes("amazonaws.com");
-  } catch {
-    return false;
-  }
-}
-
 export default function ImageWithProxy({
   pageId,
   directUrl,
@@ -26,24 +17,17 @@ export default function ImageWithProxy({
   className = "",
   hideOnError = false,
 }: ImageWithProxyProps) {
-  // For Notion-hosted images, go straight to proxy (they require auth).
-  // For external og:image URLs, try the direct URL first — it's faster and
-  // avoids Vercel routing through US servers which can trigger CDN blocks.
-  const initialSrc = directUrl
-    ? isNotionHosted(directUrl)
-      ? `/api/image-proxy?url=${encodeURIComponent(directUrl)}`
-      : directUrl
-    : `/api/image-proxy?pageId=${pageId}`;
+  // Try the direct URL first — the browser (with VPN) can reach CDN URLs that
+  // Vercel's US servers cannot. On error, fall back to the proxy which now
+  // does a redirect (so the browser still fetches directly, just via a lookup).
+  const initialSrc = directUrl ?? `/api/image-proxy?pageId=${pageId}`;
 
   const [imgSrc, setImgSrc] = useState<string>(initialSrc);
   const [hasError, setHasError] = useState(false);
 
   const handleError = () => {
-    if (directUrl && imgSrc === directUrl) {
-      // Direct URL failed — try the proxy
-      setImgSrc(`/api/image-proxy?url=${encodeURIComponent(directUrl)}`);
-    } else if (imgSrc !== `/api/image-proxy?pageId=${pageId}` && pageId) {
-      // Proxy with explicit URL failed — try pageId lookup as last resort
+    if (directUrl && imgSrc === directUrl && pageId) {
+      // Direct URL failed — use proxy pageId lookup as fallback
       setImgSrc(`/api/image-proxy?pageId=${pageId}`);
     } else {
       setHasError(true);
@@ -77,3 +61,4 @@ export default function ImageWithProxy({
     />
   );
 }
+
