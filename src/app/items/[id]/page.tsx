@@ -35,7 +35,7 @@ export default function ItemDetailPage() {
     fetch("/api/tags")
       .then((r) => r.ok ? r.json() : [])
       .then((data: TagWithCount[]) => setAllTags(data.map((t) => t.name)))
-      .catch(() => {});
+      .catch((err) => console.error("Failed to fetch tags:", err));
   }, [id]);
 
   const patchTags = async (newTags: string[]) => {

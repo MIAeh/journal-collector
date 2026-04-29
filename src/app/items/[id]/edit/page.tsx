@@ -71,6 +71,8 @@ export default function EditItemPage() {
         const data = await r.json().catch(() => ({}));
         setSaveError(data.error || "Failed to save");
       }
+    } catch {
+      setSaveError("Failed to save — check your connection");
     } finally {
       setSaving(false);
     }

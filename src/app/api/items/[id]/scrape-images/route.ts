@@ -14,6 +14,30 @@ export async function GET(
       return NextResponse.json({ error: "Item has no URL" }, { status: 400 });
     }
 
+    // Block SSRF: private IPs, localhost, metadata endpoints
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(item.url);
+    } catch {
+      return NextResponse.json({ error: "Item URL is invalid" }, { status: 400 });
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase();
+    const blocked = [
+      /^localhost$/,
+      /^127\./,
+      /^10\./,
+      /^172\.(1[6-9]|2\d|3[01])\./,
+      /^192\.168\./,
+      /^169\.254\./,
+      /^::1$/,
+      /^fc00:/,
+      /^fe80:/,
+    ];
+    if (blocked.some((re) => re.test(hostname))) {
+      return NextResponse.json({ error: "URL not allowed" }, { status: 400 });
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
