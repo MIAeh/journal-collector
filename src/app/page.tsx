@@ -10,18 +10,13 @@ import type { CollectionItem, TagWithCount, PaginatedResponse } from "@/lib/type
 function CollectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const activeTag = searchParams.get("tag");
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [tags, setTags] = useState<TagWithCount[]>([]);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const tagParam = searchParams.get("tag");
-    setActiveTag(tagParam);
-  }, [searchParams]);
 
   useEffect(() => {
     fetchTags();
