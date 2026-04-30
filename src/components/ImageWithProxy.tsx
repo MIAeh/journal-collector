@@ -17,25 +17,19 @@ export default function ImageWithProxy({
   className = "",
   hideOnError = false,
 }: ImageWithProxyProps) {
-  // Upgrade http:// → https:// to prevent mixed-content blocks (app is HTTPS).
-  const secureUrl = directUrl
-    ? directUrl.replace(/^http:\/\//i, "https://")
+  // Always route through the server-side proxy so CDN hotlink protection
+  // (e.g. XHS returning 403 when Referer is our domain) is bypassed.
+  // Pass the stored URL as ?url= so the proxy can fetch it directly;
+  // fall back to ?pageId= lookup if no directUrl is available.
+  const proxySrc = directUrl
+    ? `/api/image-proxy?url=${encodeURIComponent(directUrl)}`
+    : pageId
+    ? `/api/image-proxy?pageId=${pageId}`
     : null;
 
-  const initialSrc = secureUrl ?? `/api/image-proxy?pageId=${pageId}`;
-
-  const [imgSrc, setImgSrc] = useState<string>(initialSrc);
   const [hasError, setHasError] = useState(false);
 
-  const handleError = () => {
-    if (secureUrl && imgSrc === secureUrl && pageId) {
-      setImgSrc(`/api/image-proxy?pageId=${pageId}`);
-    } else {
-      setHasError(true);
-    }
-  };
-
-  if (!directUrl && !pageId) {
+  if (!proxySrc) {
     if (hideOnError) return null;
     return (
       <div className={`${className} bg-gray-200 flex items-center justify-center text-gray-400 text-xs`}>
@@ -55,10 +49,10 @@ export default function ImageWithProxy({
 
   return (
     <img
-      src={imgSrc}
+      src={proxySrc}
       alt={alt}
       className={`${className} object-cover`}
-      onError={handleError}
+      onError={() => setHasError(true)}
     />
   );
 }
