@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
   let comment: string | undefined;
 
   if (queryUrl) {
-    url = queryUrl;
+    // XHS share sheet may pass full text ("看到一篇好文 https://xhslink.com/…")
+    // rather than a bare URL — extract the first http(s) URL from the string.
+    url = extractFirstUrl(queryUrl);
   } else {
     try {
       const body = await request.json();
@@ -110,6 +112,11 @@ function extractMetaImages(html: string, pageUrl: string): string[] {
   }
 
   return results;
+}
+
+function extractFirstUrl(input: string): string {
+  const match = input.match(/https?:\/\/[^\s）】\]"']+/);
+  return match ? match[0] : input;
 }
 
 function extractTitle(html: string): string | null {

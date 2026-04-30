@@ -27,7 +27,8 @@ shortcut = {
     "WFWorkflowMinimumClientVersion": 900,
     "WFWorkflowMinimumClientVersionString": "900",
     "WFWorkflowName": "Save to Collector",
-    "WFWorkflowInputContentItemClasses": ["WFURLContentItem"],
+    # Accept both URLs and text — XHS shares as text with embedded link
+    "WFWorkflowInputContentItemClasses": ["WFURLContentItem", "WFStringContentItem"],
     "WFWorkflowHasShortcutInputVariables": True,
     "WFWorkflowOutputContentItemClasses": [],
     "WFWorkflowTypes": ["NCWidget", "WatchKit"],
