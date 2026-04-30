@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Generates a Save to Collector.shortcut with NO dictionary parameters.
-
-Both url and key are query params so the shortcut uses only WFTextTokenString
-in WFURL — no WFDictionaryParameterState / WFDictionaryParameterKeyValuePair
-which crashes on macOS 26 / iOS 19 WorkflowKit.
+"""Generates two shortcuts:
+  1. Save to Collector (Share Sheet) — triggered from XHS share sheet
+  2. Save Clipboard (Back Tap / Action Button) — reads clipboard, no share needed
 """
 import plistlib
 import os
@@ -15,18 +13,37 @@ if not save_api_key:
     sys.exit(1)
 
 BASE = "https://info-collector-app.vercel.app"
+API_URL = f"{BASE}/api/save?key={save_api_key}"
 
-# Auth key is static in the URL — no variable reference needed there.
-# The shared content (URL or text) is sent as raw body via WFHTTPBodyType "File",
-# which uses WFTokenAttachment (not WFDictionaryParameterKeyValuePair) — no crash.
+HTTP_ACTION = "is.workflow.actions.downloadurl"
+NOTIFY_ACTION = "is.workflow.actions.notification"
 
-shortcut = {
+def http_post_raw(input_token: dict) -> dict:
+    """POST action that sends a variable as raw body (WFTokenAttachment — no dict crash)."""
+    return {
+        "WFWorkflowActionIdentifier": HTTP_ACTION,
+        "WFWorkflowActionParameters": {
+            "WFHTTPMethod": "POST",
+            "WFURL": API_URL,
+            "WFHTTPBodyType": "File",
+            "WFRequestVariable": input_token,
+        },
+    }
+
+def notify(title: str) -> dict:
+    return {
+        "WFWorkflowActionIdentifier": NOTIFY_ACTION,
+        "WFWorkflowActionParameters": {
+            "WFNotificationActionTitle": title,
+            "WFNotificationActionBody": "",
+            "WFNotificationActionSound": True,
+        },
+    }
+
+ICON_BASE = {
     "WFWorkflowClientVersion": "1165.0.0",
     "WFWorkflowMinimumClientVersion": 900,
     "WFWorkflowMinimumClientVersionString": "900",
-    "WFWorkflowName": "Save to Collector",
-    # Accept URLs and text (XHS shares text with embedded link)
-    "WFWorkflowInputContentItemClasses": ["WFURLContentItem", "WFStringContentItem"],
     "WFWorkflowHasShortcutInputVariables": True,
     "WFWorkflowOutputContentItemClasses": [],
     "WFWorkflowTypes": ["NCWidget", "WatchKit"],
@@ -34,37 +51,55 @@ shortcut = {
         "WFWorkflowIconStartColor": 946986751,
         "WFWorkflowIconGlyphNumber": 59511,
     },
+}
+
+# ── Shortcut 1: Share Sheet ──────────────────────────────────────────────────
+# Triggered from XHS share sheet. Input = whatever XHS passes (URL or text).
+share_shortcut = {
+    **ICON_BASE,
+    "WFWorkflowName": "Save to Collector",
+    "WFWorkflowInputContentItemClasses": ["WFURLContentItem", "WFStringContentItem"],
     "WFWorkflowActions": [
-        # POST raw shortcut input as body — server extracts the URL from it.
-        # WFHTTPBodyType "File" uses WFTokenAttachment, not WFDictionaryParameterKeyValuePair.
-        {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
-            "WFWorkflowActionParameters": {
-                "WFHTTPMethod": "POST",
-                "WFURL": f"{BASE}/api/save?key={save_api_key}",
-                "WFHTTPBodyType": "File",
-                "WFRequestVariable": {
-                    "Value": {
-                        "Type": "ExtensionInput",
-                    },
-                    "WFSerializationType": "WFTokenAttachment",
-                },
-            },
-        },
-        # Show notification
-        {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
-            "WFWorkflowActionParameters": {
-                "WFNotificationActionTitle": "Saved!",
-                "WFNotificationActionBody": "",
-                "WFNotificationActionSound": True,
-            },
-        },
+        http_post_raw({
+            "Value": {"Type": "ExtensionInput"},
+            "WFSerializationType": "WFTokenAttachment",
+        }),
+        notify("Saved!"),
     ],
 }
 
-output_path = os.path.expanduser("~/Desktop/Save to Collector.shortcut")
-with open(output_path, "wb") as f:
-    plistlib.dump(shortcut, f, fmt=plistlib.FMT_BINARY)
+# ── Shortcut 2: Clipboard ────────────────────────────────────────────────────
+# Triggered by Back Tap / Action Button / Home Screen widget.
+# In XHS: tap Share → Copy Link → trigger this shortcut.
+# No share sheet needed — reads clipboard directly.
+clipboard_shortcut = {
+    **ICON_BASE,
+    "WFWorkflowName": "Save Clipboard",
+    "WFWorkflowInputContentItemClasses": [],   # no share sheet input
+    "WFWorkflowActions": [
+        # Step 1: get clipboard contents
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.getclipboardcontents",
+            "WFWorkflowActionParameters": {},
+        },
+        # Step 2: POST clipboard as raw body
+        http_post_raw({
+            "Value": {
+                "OutputUUID": "",
+                "OutputName": "Clipboard",
+                "Type": "ActionOutput",
+            },
+            "WFSerializationType": "WFTokenAttachment",
+        }),
+        notify("Saved!"),
+    ],
+}
 
-print(f"Written: {output_path}")
+def write(shortcut: dict, name: str) -> None:
+    path = os.path.expanduser(f"~/Desktop/{name}.shortcut")
+    with open(path, "wb") as f:
+        plistlib.dump(shortcut, f, fmt=plistlib.FMT_BINARY)
+    print(f"Written: {path}")
+
+write(share_shortcut, "Save to Collector")
+write(clipboard_shortcut, "Save Clipboard")
