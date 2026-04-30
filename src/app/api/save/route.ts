@@ -12,8 +12,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Accept url from query param (for iOS Shortcut) or JSON body
-  const queryUrl = request.nextUrl.searchParams.get("url");
+  // iOS Shortcut sends raw body (URL or XHS share text); web app sends JSON
+  const contentType = request.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
 
   let url: string | undefined;
   let title: string | undefined;
@@ -21,10 +22,10 @@ export async function POST(request: NextRequest) {
   let tags: string[] = [];
   let comment: string | undefined;
 
-  if (queryUrl) {
-    // XHS share sheet may pass full text ("看到一篇好文 https://xhslink.com/…")
-    // rather than a bare URL — extract the first http(s) URL from the string.
-    url = extractFirstUrl(queryUrl);
+  if (!isJson) {
+    // Raw text body from iOS Shortcut — extract first URL
+    const raw = await request.text();
+    url = extractFirstUrl(raw.trim());
   } else {
     try {
       const body = await request.json();

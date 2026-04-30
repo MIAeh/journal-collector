@@ -16,18 +16,16 @@ if not save_api_key:
 
 BASE = "https://info-collector-app.vercel.app"
 
-# Build URL with key as static param, url as variable token.
-# \uFFFC = Unicode object replacement char — Shortcuts token placeholder.
-PREFIX = f"{BASE}/api/save?key={save_api_key}&url="
-url_string = PREFIX + "\uFFFC"
-attachment_range = "{" + str(len(PREFIX)) + ", 1}"
+# Auth key is static in the URL — no variable reference needed there.
+# The shared content (URL or text) is sent as raw body via WFHTTPBodyType "File",
+# which uses WFTokenAttachment (not WFDictionaryParameterKeyValuePair) — no crash.
 
 shortcut = {
     "WFWorkflowClientVersion": "1165.0.0",
     "WFWorkflowMinimumClientVersion": 900,
     "WFWorkflowMinimumClientVersionString": "900",
     "WFWorkflowName": "Save to Collector",
-    # Accept both URLs and text — XHS shares as text with embedded link
+    # Accept URLs and text (XHS shares text with embedded link)
     "WFWorkflowInputContentItemClasses": ["WFURLContentItem", "WFStringContentItem"],
     "WFWorkflowHasShortcutInputVariables": True,
     "WFWorkflowOutputContentItemClasses": [],
@@ -37,20 +35,19 @@ shortcut = {
         "WFWorkflowIconGlyphNumber": 59511,
     },
     "WFWorkflowActions": [
-        # Single action: POST ?key=<static>&url=<Shortcut Input>
-        # No headers, no body — zero WFDictionaryParameterState usage.
+        # POST raw shortcut input as body — server extracts the URL from it.
+        # WFHTTPBodyType "File" uses WFTokenAttachment, not WFDictionaryParameterKeyValuePair.
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
             "WFWorkflowActionParameters": {
                 "WFHTTPMethod": "POST",
-                "WFURL": {
+                "WFURL": f"{BASE}/api/save?key={save_api_key}",
+                "WFHTTPBodyType": "File",
+                "WFRequestVariable": {
                     "Value": {
-                        "string": url_string,
-                        "attachmentsByRange": {
-                            attachment_range: {"Type": "ExtensionInput"},
-                        },
+                        "Type": "ExtensionInput",
                     },
-                    "WFSerializationType": "WFTextTokenString",
+                    "WFSerializationType": "WFTokenAttachment",
                 },
             },
         },
@@ -71,4 +68,3 @@ with open(output_path, "wb") as f:
     plistlib.dump(shortcut, f, fmt=plistlib.FMT_BINARY)
 
 print(f"Written: {output_path}")
-print(f"Attachment range: {attachment_range}")
