@@ -10,10 +10,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const body = await request.json();
-    const { url, title, images, tags, comment } = body;
+  // Accept url from query param (for iOS Shortcut) or JSON body
+  const queryUrl = request.nextUrl.searchParams.get("url");
 
+  let url: string | undefined;
+  let title: string | undefined;
+  let images: string[] = [];
+  let tags: string[] = [];
+  let comment: string | undefined;
+
+  if (queryUrl) {
+    url = queryUrl;
+  } else {
+    try {
+      const body = await request.json();
+      ({ url, title, images, tags, comment } = body);
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+  }
+
+  try {
     if (!url || typeof url !== "string") {
       return NextResponse.json(
         { error: "url is required and must be a string" },
