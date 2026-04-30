@@ -36,9 +36,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!url || typeof url !== "string") {
+    const hasContent =
+      url || title?.trim() || comment?.trim() || tags?.length || images?.length;
+    if (!hasContent) {
       return NextResponse.json(
-        { error: "url is required and must be a string" },
+        { error: "At least one field is required" },
         { status: 400 }
       );
     }
@@ -50,28 +52,30 @@ export async function POST(request: NextRequest) {
         ? (images as string[])
         : [];
 
-    // Fetch page HTML once — use for both OG data and image extraction
+    // Only fetch HTML if a URL was provided
     let html: string | null = null;
-    try {
-      const pageResponse = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; Collector/1.0)" },
-        signal: AbortSignal.timeout(10000),
-      });
-      html = await pageResponse.text();
-    } catch {
-      // continue without HTML
-    }
+    if (url) {
+      try {
+        const pageResponse = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Collector/1.0)" },
+          signal: AbortSignal.timeout(10000),
+        });
+        html = await pageResponse.text();
+      } catch {
+        // continue without HTML
+      }
 
-    if (!finalTitle) {
-      finalTitle = html ? extractTitle(html) || url : url;
-    }
+      if (!finalTitle) {
+        finalTitle = html ? extractTitle(html) || url : url;
+      }
 
-    if (finalImages.length === 0 && html) {
-      finalImages = extractMetaImages(html, url);
+      if (finalImages.length === 0 && html) {
+        finalImages = extractMetaImages(html, url);
+      }
     }
 
     const item = await saveItem({
-      url,
+      url: url ?? "",
       title: finalTitle,
       images: finalImages,
       tags: tags || [],

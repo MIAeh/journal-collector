@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { clearCollectionCache } from "@/lib/cache";
 
@@ -20,6 +20,10 @@ export default function AddPage() {
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState("");
   const [comment, setComment] = useState("");
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [structuredError, setStructuredError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Quick field
   const [quickText, setQuickText] = useState("");
@@ -42,20 +46,55 @@ export default function AddPage() {
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setStructuredError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(
+        `/api/upload?key=${process.env.NEXT_PUBLIC_SAVE_API_KEY ?? ""}`,
+        { method: "POST", body: form }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const { url: imageUrl } = await res.json();
+      setUploadedImageUrl(imageUrl);
+    } catch (err) {
+      setStructuredError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleStructured = async (e: FormEvent) => {
     e.preventDefault();
+    setStructuredError(null);
+
+    const parsedTags = tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const hasContent =
+      url.trim() || title.trim() || comment.trim() ||
+      parsedTags.length > 0 || uploadedImageUrl;
+
+    if (!hasContent) {
+      setStructuredError("Please fill in at least one field.");
+      return;
+    }
+
     setSaving(true);
     try {
       await save({
-        url: url.trim(),
+        url: url.trim() || undefined,
         title: title.trim() || undefined,
-        tags: tags.split(",").map((t) => t.trim()).filter((t) => t.length > 0),
+        tags: parsedTags,
         comment: comment.trim() || undefined,
+        images: uploadedImageUrl ? [uploadedImageUrl] : undefined,
       });
       clearCollectionCache();
       router.push("/");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to save item");
+      setStructuredError(error instanceof Error ? error.message : "Failed to save item");
     } finally {
       setSaving(false);
     }
@@ -107,16 +146,15 @@ export default function AddPage() {
         <form onSubmit={handleStructured} className="space-y-4">
           <div>
             <label htmlFor="url" className="block text-sm font-medium mb-2">
-              URL <span className="text-red-500">*</span>
+              URL
             </label>
             <input
               id="url"
-              type="url"
+              type="text"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => { setUrl(e.target.value); setStructuredError(null); }}
               className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 text-gray-900"
               placeholder="https://example.com"
-              required
             />
           </div>
 
@@ -128,9 +166,9 @@ export default function AddPage() {
               id="title"
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { setTitle(e.target.value); setStructuredError(null); }}
               className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 text-gray-900"
-              placeholder="Auto-fetched if empty"
+              placeholder="Auto-fetched from URL if empty"
             />
           </div>
 
@@ -142,7 +180,7 @@ export default function AddPage() {
               id="tags"
               type="text"
               value={tags}
-              onChange={(e) => setTags(e.target.value)}
+              onChange={(e) => { setTags(e.target.value); setStructuredError(null); }}
               className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 text-gray-900"
               placeholder="tag1, tag2, tag3"
             />
@@ -155,15 +193,49 @@ export default function AddPage() {
             <textarea
               id="comment"
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={(e) => { setComment(e.target.value); setStructuredError(null); }}
               className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg focus:ring-2 focus:ring-gray-900 min-h-[100px] text-gray-900"
               placeholder="Add your notes here..."
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium mb-2">Image</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full px-4 py-2 bg-gray-100 border-0 rounded-lg text-sm text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50 text-left"
+            >
+              {uploading
+                ? "Uploading..."
+                : uploadedImageUrl
+                ? "✓ Image uploaded — click to replace"
+                : "Upload image (JPEG, PNG, GIF, WebP · max 10 MB)"}
+            </button>
+            {uploadedImageUrl && (
+              <img
+                src={uploadedImageUrl}
+                alt="Preview"
+                className="mt-2 rounded-lg max-h-40 object-contain bg-gray-100"
+              />
+            )}
+          </div>
+
+          {structuredError && (
+            <p className="text-sm text-red-600">{structuredError}</p>
+          )}
+
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || uploading}
             className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Saving..." : "Save Item"}

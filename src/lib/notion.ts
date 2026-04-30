@@ -41,9 +41,9 @@ function pageToItem(page: any): CollectionItem {
 export async function saveItem(input: SaveItemInput): Promise<CollectionItem> {
   const properties: any = {
     Title: {
-      title: [{ text: { content: input.title || input.url } }],
+      title: [{ text: { content: input.title || input.url || "Untitled" } }],
     },
-    URL: { url: input.url },
+    URL: { url: input.url || null },
     Tags: {
       multi_select: (input.tags || []).map((tag) => ({ name: tag })),
     },
