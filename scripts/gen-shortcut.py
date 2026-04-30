@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generates a Save to Collector.shortcut file for iOS/macOS.
+"""Generates a Save to Collector.shortcut with NO dictionary parameters.
 
-URL strategy: pass the shared URL as ?url=<input> query param instead of a
-JSON body. This avoids the WFDictionaryParameterKeyValuePair variable-token
-format that crashes Shortcuts on macOS 26 / WorkflowKit.
+Both url and key are query params so the shortcut uses only WFTextTokenString
+in WFURL — no WFDictionaryParameterState / WFDictionaryParameterKeyValuePair
+which crashes on macOS 26 / iOS 19 WorkflowKit.
 """
 import plistlib
 import os
@@ -16,12 +16,11 @@ if not save_api_key:
 
 BASE = "https://info-collector-app.vercel.app"
 
-# The WFURL value is a WFTextTokenString with the Shortcut Input variable
-# appended as a query param. Position of \uFFFC = len(prefix).
-URL_PREFIX = f"{BASE}/api/save?url="
-# \uFFFC is the Unicode object replacement character — Shortcuts token placeholder
-url_token_string = URL_PREFIX + "\uFFFC"
-attachment_range = "{" + str(len(URL_PREFIX)) + ", 1}"
+# Build URL with key as static param, url as variable token.
+# \uFFFC = Unicode object replacement char — Shortcuts token placeholder.
+PREFIX = f"{BASE}/api/save?key={save_api_key}&url="
+url_string = PREFIX + "\uFFFC"
+attachment_range = "{" + str(len(PREFIX)) + ", 1}"
 
 shortcut = {
     "WFWorkflowClientVersion": "1165.0.0",
@@ -37,41 +36,24 @@ shortcut = {
         "WFWorkflowIconGlyphNumber": 59511,
     },
     "WFWorkflowActions": [
-        # Action 1: POST ?url=<Shortcut Input> — no JSON body, no WFDictionaryParameterKeyValuePair
+        # Single action: POST ?key=<static>&url=<Shortcut Input>
+        # No headers, no body — zero WFDictionaryParameterState usage.
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
             "WFWorkflowActionParameters": {
                 "WFHTTPMethod": "POST",
                 "WFURL": {
                     "Value": {
-                        "string": url_token_string,
+                        "string": url_string,
                         "attachmentsByRange": {
                             attachment_range: {"Type": "ExtensionInput"},
                         },
                     },
                     "WFSerializationType": "WFTextTokenString",
                 },
-                "WFHTTPHeaders": {
-                    "Value": {
-                        "WFDictionaryFieldValueItems": [
-                            {
-                                "WFItemType": 0,
-                                "WFKey": {
-                                    "Value": "x-api-key",
-                                    "WFSerializationType": "WFTextTokenString",
-                                },
-                                "WFValue": {
-                                    "Value": save_api_key,
-                                    "WFSerializationType": "WFTextTokenString",
-                                },
-                            },
-                        ]
-                    },
-                    "WFSerializationType": "WFDictionaryFieldValue",
-                },
             },
         },
-        # Action 2: Show notification
+        # Show notification
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
             "WFWorkflowActionParameters": {
@@ -88,4 +70,4 @@ with open(output_path, "wb") as f:
     plistlib.dump(shortcut, f, fmt=plistlib.FMT_BINARY)
 
 print(f"Written: {output_path}")
-print(f"URL attachment range: {attachment_range}")
+print(f"Attachment range: {attachment_range}")

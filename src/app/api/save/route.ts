@@ -4,8 +4,10 @@ import { fetchOgData } from "@/lib/og";
 import { extractPageImages } from "@/app/api/items/[id]/scrape-images/extract";
 
 export async function POST(request: NextRequest) {
-  const apiKey = request.headers.get("x-api-key");
   const expectedKey = process.env.SAVE_API_KEY;
+  const apiKey =
+    request.headers.get("x-api-key") ??
+    request.nextUrl.searchParams.get("key");
   if (!expectedKey || !apiKey || apiKey !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
