@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getItem, updateItem } from "@/lib/notion";
+import { mirrorImages } from "@/lib/mirror-image";
 
 export async function POST(
   _request: NextRequest,
@@ -44,8 +45,12 @@ export async function POST(
       extractTagContent(html, "title") ||
       null;
 
-    // Extract updated images — only og/twitter meta tags (reliably public)
-    const newImages = extractMetaImages(html, item.url);
+    // Extract updated images — only og/twitter meta tags (reliably public).
+    // Take only the primary image; mirror to Blob so the URL never expires.
+    const rawImages = extractMetaImages(html, item.url);
+    const newImages = rawImages.length > 0
+      ? await mirrorImages(rawImages.slice(0, 1))
+      : [];
 
     // Build updates — only overwrite if we got something meaningful
     const updates: { title?: string; images?: string[] } = {};

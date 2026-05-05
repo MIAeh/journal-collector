@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveItem, updateItem } from "@/lib/notion";
-import { fetchOgData } from "@/lib/og";
-import { extractPageImages } from "@/app/api/items/[id]/scrape-images/extract";
+import { mirrorImage } from "@/lib/mirror-image";
 
 export async function POST(request: NextRequest) {
   const expectedKey = process.env.SAVE_API_KEY;
@@ -70,9 +69,19 @@ export async function POST(request: NextRequest) {
       }
 
       if (finalImages.length === 0 && html) {
-        finalImages = extractMetaImages(html, url);
+        // Only keep the primary (first) og/twitter image
+        const found = extractMetaImages(html, url);
+        if (found.length > 0) finalImages = [found[0]];
       }
     }
+
+    // Mirror external images to Vercel Blob so URLs never expire.
+    // User-uploaded images (from /api/upload) are already on Blob — skip those.
+    finalImages = await Promise.all(
+      finalImages.map((u) =>
+        u.includes("vercel-storage.com") ? Promise.resolve(u) : mirrorImage(u)
+      )
+    );
 
     const item = await saveItem({
       url: url ?? "",

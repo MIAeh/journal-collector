@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import ImageWithProxy from "@/components/ImageWithProxy";
@@ -18,6 +18,10 @@ export default function ItemDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Tag editing state
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -96,6 +100,31 @@ export default function ItemDetailPage() {
     }
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !item) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const r = await fetch(`/api/items/${id}/upload-image`, {
+        method: "POST",
+        body: formData,
+      });
+      if (r.ok) {
+        const { url } = await r.json();
+        setItem({ ...item, images: [...item.images, url] });
+        clearCollectionCache();
+      } else {
+        const data = await r.json().catch(() => ({}));
+        alert(data.error || "Upload failed");
+      }
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this item?")) return;
     setDeleting(true);
@@ -167,6 +196,26 @@ export default function ItemDetailPage() {
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          {/* Upload image */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleUpload}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="text-gray-500 hover:text-gray-900 disabled:opacity-40 transition-colors"
+            aria-label="Upload image"
+            title={uploading ? "Uploading…" : "Upload image"}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16l4-4m0 0l4 4m-4-4v9M20 16V7a2 2 0 00-2-2H6a2 2 0 00-2 2v2" />
             </svg>
           </button>
           <Link
