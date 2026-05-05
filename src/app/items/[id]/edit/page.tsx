@@ -245,6 +245,7 @@ export default function EditItemPage() {
                 <ImageWithProxy
                   pageId={item.id}
                   directUrl={url}
+                  imageIndex={i}
                   alt={`Image ${i + 1}`}
                   className="w-16 h-16 object-cover rounded-lg"
                 />

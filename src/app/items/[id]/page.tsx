@@ -239,6 +239,7 @@ export default function ItemDetailPage() {
                 key={i}
                 pageId={item.id}
                 directUrl={imgUrl}
+                imageIndex={i}
                 alt={`${item.title} ${i + 1}`}
                 className="flex-none w-64 aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 snap-start object-cover"
                 hideOnError

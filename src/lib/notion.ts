@@ -210,8 +210,8 @@ export async function listTags(): Promise<TagWithCount[]> {
   return tagCounts;
 }
 
-export async function getImageUrl(pageId: string): Promise<string | null> {
+export async function getImageUrl(pageId: string, index = 0): Promise<string | null> {
   const page = await notion.pages.retrieve({ page_id: pageId });
   const images = extractImages(page);
-  return images[0] ?? null;
+  return images[index] ?? null;
 }
